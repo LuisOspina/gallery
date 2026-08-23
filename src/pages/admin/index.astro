@@ -62,7 +62,7 @@ import Icon from "../../components/Icon.astro";
 				<p class="list-status" id="list-status">Loading photos…</p>
 				<div class="table-wrap">
 					<table id="photo-table" hidden>
-						<thead><tr><th>Photo</th><th>Caption</th><th>City</th><th>Tags</th><th>Created</th><th>Status</th><th><span class="visually-hidden">Edit</span></th></tr></thead>
+						<thead><tr><th>Photo</th><th>Caption</th><th>City</th><th>Tags</th><th id="created-heading" aria-sort="descending"><button class="sort-button" id="created-sort" type="button" aria-label="Sort oldest first">Created <span id="created-arrow" aria-hidden="true">↓</span></button></th><th>Status</th><th><span class="visually-hidden">Edit</span></th></tr></thead>
 						<tbody id="photo-list"></tbody>
 					</table>
 				</div>
@@ -121,6 +121,9 @@ import Icon from "../../components/Icon.astro";
 	const listStatus = document.querySelector<HTMLParagraphElement>("#list-status");
 	const table = document.querySelector<HTMLTableElement>("#photo-table");
 	const list = document.querySelector<HTMLTableSectionElement>("#photo-list");
+	const createdHeading = document.querySelector<HTMLTableCellElement>("#created-heading");
+	const createdSort = document.querySelector<HTMLButtonElement>("#created-sort");
+	const createdArrow = document.querySelector<HTMLElement>("#created-arrow");
 	const cityOptions = document.querySelector<HTMLDataListElement>("#city-options");
 	const editDialog = document.querySelector<HTMLDialogElement>("#edit-dialog");
 	const deleteDialog = document.querySelector<HTMLDialogElement>("#delete-dialog");
@@ -132,6 +135,7 @@ import Icon from "../../components/Icon.astro";
 	const editStatus = document.querySelector<HTMLParagraphElement>("#edit-status");
 	let currentItem: MediaItem | undefined;
 	let items: MediaItem[] = [];
+	let newestFirst = true;
 
 	function parseTags(value: FormDataEntryValue | string | null) {
 		return [...new Set(String(value || "").split(",").map((tag) => tag.trim()).filter(Boolean))];
@@ -174,7 +178,12 @@ import Icon from "../../components/Icon.astro";
 	function renderList() {
 		if (!list || !table || !listStatus) return;
 		list.replaceChildren();
-		items.forEach((item) => {
+		const sortedItems = [...items].sort((a, b) => {
+			const difference = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+			return newestFirst ? difference : -difference;
+		});
+
+		sortedItems.forEach((item) => {
 			const row = document.createElement("tr");
 			if (item.hidden) row.className = "hidden-photo";
 
@@ -279,6 +288,13 @@ import Icon from "../../components/Icon.astro";
 
 	signInButton?.addEventListener("click", signIn);
 	signOutButton?.addEventListener("click", signOut);
+	createdSort?.addEventListener("click", () => {
+		newestFirst = !newestFirst;
+		createdHeading?.setAttribute("aria-sort", newestFirst ? "descending" : "ascending");
+		createdSort.setAttribute("aria-label", newestFirst ? "Sort oldest first" : "Sort newest first");
+		if (createdArrow) createdArrow.textContent = newestFirst ? "↓" : "↑";
+		renderList();
+	});
 	photoInput?.addEventListener("change", () => selectFile(photoInput.files?.[0]));
 	["dragenter", "dragover"].forEach((name) => dropZone?.addEventListener(name, (event) => { event.preventDefault(); dropZone.classList.add("is-dragging"); }));
 	["dragleave", "drop"].forEach((name) => dropZone?.addEventListener(name, (event) => { event.preventDefault(); dropZone.classList.remove("is-dragging"); }));
@@ -594,6 +610,19 @@ import Icon from "../../components/Icon.astro";
 		font-size: 0.75rem;
 		font-weight: 600;
 		white-space: nowrap;
+	}
+
+	.sort-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0;
+		color: inherit;
+		background: transparent;
+		border: 0;
+		cursor: pointer;
+		font: inherit;
+		font-weight: inherit;
 	}
 
 	tbody tr:hover {
