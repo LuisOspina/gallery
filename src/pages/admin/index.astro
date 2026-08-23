@@ -1,0 +1,293 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Gallery Admin — Luis Ospina">
+	<header class="site-header">
+		<a class="icon-link" href="/" aria-label="Back to gallery">
+			<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+		</a>
+		<a class="brand" href="/">
+			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span> / Admin
+		</a>
+	</header>
+
+	<main class="admin-main">
+		<section class="admin-card" id="signed-out">
+			<h1>Gallery admin</h1>
+			<p>Sign in to upload a photo and add its details.</p>
+			<button class="primary-button" id="sign-in" type="button">Sign in</button>
+		</section>
+
+		<section class="admin-card" id="signed-in" hidden>
+			<div class="admin-heading">
+				<div>
+					<h1>Add a photo</h1>
+					<p id="account-email"></p>
+				</div>
+				<button class="text-button" id="sign-out" type="button">Sign out</button>
+			</div>
+
+			<form id="upload-form">
+				<label>
+					Photo
+					<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+				</label>
+
+				<label>
+					Title
+					<input name="title" maxlength="100" />
+				</label>
+
+				<label>
+					Subtitle
+					<input name="subtitle" maxlength="200" />
+				</label>
+
+				<div class="field-row">
+					<label>
+						City
+						<input name="city" maxlength="80" />
+					</label>
+					<label>
+						Country
+						<input name="country" maxlength="80" />
+					</label>
+				</div>
+
+				<label>
+					Date photographed
+					<input name="capturedAt" type="datetime-local" />
+				</label>
+
+				<button class="primary-button" type="submit">Upload photo</button>
+				<p class="form-status" id="form-status" role="status"></p>
+			</form>
+		</section>
+	</main>
+</Layout>
+
+<script>
+	import {
+		authIsConfigured,
+		finishSignIn,
+		getAccessToken,
+		getSignedInEmail,
+		signIn,
+		signOut,
+	} from "../../lib/auth";
+
+	const apiUrl = import.meta.env.PUBLIC_API_URL?.replace(/\/$/, "");
+	const signedOut = document.querySelector<HTMLElement>("#signed-out");
+	const signedIn = document.querySelector<HTMLElement>("#signed-in");
+	const signInButton = document.querySelector<HTMLButtonElement>("#sign-in");
+	const signOutButton = document.querySelector<HTMLButtonElement>("#sign-out");
+	const form = document.querySelector<HTMLFormElement>("#upload-form");
+	const status = document.querySelector<HTMLParagraphElement>("#form-status");
+	const email = document.querySelector<HTMLParagraphElement>("#account-email");
+
+	function showSignedIn() {
+		if (signedOut) signedOut.hidden = true;
+		if (signedIn) signedIn.hidden = false;
+		if (email) email.textContent = getSignedInEmail() || "Signed in";
+	}
+
+	async function resizePhoto(file: File, maximum: number, quality: number) {
+		const source = await createImageBitmap(file);
+		const scale = Math.min(1, maximum / Math.max(source.width, source.height));
+		const width = Math.round(source.width * scale);
+		const height = Math.round(source.height * scale);
+		const canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		canvas.getContext("2d")?.drawImage(source, 0, 0, width, height);
+		source.close();
+
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+		if (!blob) throw new Error("The photo could not be prepared.");
+		return { blob, width, height };
+	}
+
+	async function uploadFile(url: string, file: Blob, contentType: string) {
+		const response = await fetch(url, {
+			method: "PUT",
+			headers: { "content-type": contentType },
+			body: file,
+		});
+		if (!response.ok) throw new Error("The photo could not be uploaded.");
+	}
+
+	if (!authIsConfigured || !apiUrl) {
+		if (signInButton) signInButton.disabled = true;
+		const message = signedOut?.querySelector("p");
+		if (message) message.textContent = "The private admin connection has not been configured yet.";
+	} else {
+		try {
+			await finishSignIn();
+			if (getAccessToken()) showSignedIn();
+		} catch (error) {
+			const message = signedOut?.querySelector("p");
+			if (message) message.textContent = error instanceof Error ? error.message : "Sign-in failed.";
+		}
+	}
+
+	signInButton?.addEventListener("click", signIn);
+	signOutButton?.addEventListener("click", signOut);
+
+	form?.addEventListener("submit", async (event) => {
+		event.preventDefault();
+		const token = getAccessToken();
+		const data = new FormData(form);
+		const photo = data.get("photo");
+
+		if (!token || !(photo instanceof File) || !photo.size) return;
+		if (status) status.textContent = "Preparing upload…";
+
+		try {
+			const metadata = Object.fromEntries(["title", "subtitle", "city", "country", "capturedAt"].map((key) => [key, data.get(key)]));
+			const createResponse = await fetch(`${apiUrl}/uploads`, {
+				method: "POST",
+				headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+				body: JSON.stringify({ ...metadata, contentType: photo.type }),
+			});
+
+			if (!createResponse.ok) throw new Error("The upload could not be started.");
+			const urls = await createResponse.json();
+
+			if (status) status.textContent = "Preparing photo sizes…";
+			const [display, thumbnail] = await Promise.all([
+				resizePhoto(photo, 1800, 0.84),
+				resizePhoto(photo, 640, 0.78),
+			]);
+
+			if (status) status.textContent = "Uploading photo…";
+			await Promise.all([
+				uploadFile(urls.originalUrl, photo, photo.type),
+				uploadFile(urls.displayUrl, display.blob, "image/webp"),
+				uploadFile(urls.thumbnailUrl, thumbnail.blob, "image/webp"),
+			]);
+
+			const completeResponse = await fetch(`${apiUrl}/uploads/${urls.id}/complete`, {
+				method: "POST",
+				headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+				body: JSON.stringify({ width: display.width, height: display.height }),
+			});
+			if (!completeResponse.ok) throw new Error("The upload could not be completed.");
+
+			form.reset();
+			if (status) status.textContent = "Uploaded. The photo is now in the gallery.";
+		} catch (error) {
+			if (status) status.textContent = error instanceof Error ? error.message : "The upload failed.";
+		}
+	});
+</script>
+
+<style>
+	.admin-main {
+		width: min(100% - 2rem, 42rem);
+		margin: 3rem auto;
+	}
+
+	.admin-card {
+		padding: clamp(1.25rem, 4vw, 2rem);
+		background: #fff;
+		border: 1px solid var(--line);
+	}
+
+	.admin-card h1 {
+		margin: 0 0 0.5rem;
+		font-size: 1.5rem;
+	}
+
+	.admin-card p {
+		color: var(--muted);
+	}
+
+	.admin-heading,
+	.field-row {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.admin-heading {
+		align-items: start;
+		justify-content: space-between;
+		margin-bottom: 1.5rem;
+	}
+
+	.admin-heading p {
+		margin: 0;
+		font-size: 0.85rem;
+	}
+
+	form,
+	label {
+		display: grid;
+		gap: 0.45rem;
+	}
+
+	form {
+		gap: 1rem;
+	}
+
+	label {
+		flex: 1;
+		font-size: 0.9rem;
+		font-weight: 600;
+	}
+
+	input {
+		width: 100%;
+		min-height: 2.75rem;
+		padding: 0.65rem 0.75rem;
+		color: var(--foreground);
+		background: var(--background);
+		border: 1px solid var(--line);
+		border-radius: 0;
+	}
+
+	input[type="file"] {
+		padding: 0.55rem;
+	}
+
+	.primary-button {
+		width: fit-content;
+		min-height: 2.75rem;
+		padding: 0.65rem 1rem;
+		color: #fff;
+		background: var(--green);
+		border: 1px solid var(--green);
+		cursor: pointer;
+	}
+
+	.primary-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.text-button {
+		padding: 0;
+		color: var(--muted);
+		background: none;
+		border: 0;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 0.2rem;
+	}
+
+	.form-status {
+		min-height: 1.2rem;
+		margin: 0;
+		font-size: 0.9rem;
+	}
+
+	@media (max-width: 560px) {
+		.admin-main {
+			margin: 1rem auto;
+		}
+
+		.field-row {
+			display: grid;
+		}
+	}
+</style>

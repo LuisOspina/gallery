@@ -1,0 +1,130 @@
+:root {
+	--background: #f6f4ef;
+	--foreground: #26231f;
+	--muted: #716b63;
+	--brown: #873c25;
+	--green: #32734c;
+	--line: #d8d3ca;
+	font-family: Arial, Helvetica, sans-serif;
+	color: var(--foreground);
+	background: var(--background);
+	font-synthesis: none;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--background);
+}
+
+body {
+	min-width: 320px;
+	min-height: 100vh;
+	margin: 0;
+}
+
+a {
+	color: inherit;
+}
+
+button,
+input {
+	font: inherit;
+}
+
+:focus-visible {
+	outline: 3px solid var(--green);
+	outline-offset: 3px;
+}
+
+.material-symbols-rounded {
+	font-size: 1.6rem;
+	font-weight: normal;
+	line-height: 1;
+	font-style: normal;
+	letter-spacing: normal;
+	text-transform: none;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	-webkit-font-feature-settings: "liga";
+	-webkit-font-smoothing: antialiased;
+}
+
+.site-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 4.5rem;
+	padding: 1rem clamp(1rem, 4vw, 3rem);
+	border-bottom: 1px solid var(--line);
+}
+
+.brand {
+	font-size: 1.15rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.brand-luis {
+	color: var(--brown);
+}
+
+.brand-ospina {
+	color: var(--green);
+}
+
+.site-link {
+	color: var(--muted);
+	font-size: 0.9rem;
+	text-underline-offset: 0.25rem;
+}
+
+.icon-link,
+.icon-button {
+	display: inline-grid;
+	width: 2.75rem;
+	height: 2.75rem;
+	place-items: center;
+	padding: 0;
+	color: var(--foreground);
+	background: transparent;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.icon-link:hover,
+.icon-button:hover {
+	border-color: var(--foreground);
+}
+
+.status-message {
+	padding: 3rem 1rem;
+	color: var(--muted);
+	text-align: center;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+	}
+}

@@ -1,0 +1,218 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Photo — Luis Ospina" pageClass="viewer-page">
+	<header class="viewer-header">
+		<a class="icon-link" href="/" aria-label="Back to gallery">
+			<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+		</a>
+		<a class="brand" href="/">
+			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span>
+		</a>
+	</header>
+
+	<main class="viewer" aria-live="polite">
+		<a class="icon-link viewer-arrow" id="previous-desktop" href="/" aria-label="Previous photo">
+			<span class="material-symbols-rounded" aria-hidden="true">arrow_back_ios_new</span>
+		</a>
+
+		<figure class="photo-view">
+			<p class="status-message" id="media-status">Loading photo…</p>
+			<img id="media-image" alt="" hidden />
+			<figcaption id="media-caption" hidden>
+				<h1 id="media-title"></h1>
+				<p id="media-subtitle"></p>
+				<p class="media-details" id="media-details"></p>
+			</figcaption>
+		</figure>
+
+		<a class="icon-link viewer-arrow" id="next-desktop" href="/" aria-label="Next photo">
+			<span class="material-symbols-rounded" aria-hidden="true">arrow_forward_ios</span>
+		</a>
+
+		<nav class="mobile-controls" aria-label="Photo navigation">
+			<a class="icon-link" id="previous-mobile" href="/" aria-label="Previous photo">
+				<span class="material-symbols-rounded" aria-hidden="true">arrow_back_ios_new</span>
+			</a>
+			<a class="icon-link" id="next-mobile" href="/" aria-label="Next photo">
+				<span class="material-symbols-rounded" aria-hidden="true">arrow_forward_ios</span>
+			</a>
+		</nav>
+	</main>
+</Layout>
+
+<script>
+	import { getMedia, listMedia } from "../../lib/media";
+
+	const id = decodeURIComponent(location.pathname.split("/").filter(Boolean).at(-1) || "");
+	const status = document.querySelector<HTMLParagraphElement>("#media-status");
+	const image = document.querySelector<HTMLImageElement>("#media-image");
+	const caption = document.querySelector<HTMLElement>("#media-caption");
+	const title = document.querySelector<HTMLHeadingElement>("#media-title");
+	const subtitle = document.querySelector<HTMLParagraphElement>("#media-subtitle");
+	const details = document.querySelector<HTMLParagraphElement>("#media-details");
+	const previousLinks = ["#previous-desktop", "#previous-mobile"];
+	const nextLinks = ["#next-desktop", "#next-mobile"];
+
+	function setLinks(selectors: string[], href: string) {
+		selectors.forEach((selector) => {
+			const link = document.querySelector<HTMLAnchorElement>(selector);
+			if (link) link.href = href;
+		});
+	}
+
+	try {
+		const [item, items] = await Promise.all([getMedia(id), listMedia()]);
+
+		if (!item) throw new Error("Photo not found");
+
+		const index = items.findIndex((photo) => photo.id === item.id);
+		const previous = items[(index - 1 + items.length) % items.length];
+		const next = items[(index + 1) % items.length];
+		const locationText = [item.city, item.country].filter(Boolean).join(", ");
+		const uploaded = new Intl.DateTimeFormat(undefined, {
+			dateStyle: "medium",
+			timeStyle: "short",
+			timeZone: "UTC",
+		}).format(new Date(item.uploadedAt));
+
+		if (image) {
+			image.src = item.displayUrl;
+			image.alt = item.title;
+			image.width = item.width;
+			image.height = item.height;
+			image.hidden = false;
+		}
+
+		if (title) title.textContent = item.title;
+		if (subtitle) {
+			subtitle.textContent = item.subtitle;
+			subtitle.hidden = !item.subtitle;
+		}
+		if (details) details.textContent = [locationText, `Uploaded ${uploaded} UTC`].filter(Boolean).join(" · ");
+		if (caption) caption.hidden = false;
+		if (status) status.hidden = true;
+
+		document.title = `${item.title || "Photo"} — Luis Ospina`;
+		setLinks(previousLinks, `/media/${previous.id}`);
+		setLinks(nextLinks, `/media/${next.id}`);
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "ArrowLeft") location.href = `/media/${previous.id}`;
+			if (event.key === "ArrowRight") location.href = `/media/${next.id}`;
+		});
+	} catch {
+		if (status) status.textContent = "This photo could not be found.";
+	}
+</script>
+
+<style is:global>
+	html {
+		height: 100%;
+		overflow: hidden;
+	}
+
+	.viewer-page {
+		height: 100dvh;
+		overflow: hidden;
+	}
+</style>
+
+<style>
+	.viewer-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		height: 4.5rem;
+		padding: 0 1rem;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.viewer {
+		display: grid;
+		grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+		align-items: center;
+		gap: 1rem;
+		height: calc(100dvh - 4.5rem);
+		padding: 1rem;
+	}
+
+	.photo-view {
+		display: grid;
+		grid-template-rows: minmax(0, 1fr) auto;
+		gap: 0.8rem;
+		min-width: 0;
+		height: 100%;
+		margin: 0;
+		text-align: center;
+	}
+
+	.photo-view img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		object-fit: contain;
+	}
+
+	.photo-view figcaption {
+		min-height: 3.6rem;
+	}
+
+	.photo-view h1,
+	.photo-view p {
+		margin: 0.15rem 0;
+	}
+
+	.photo-view h1 {
+		font-size: 1rem;
+	}
+
+	.photo-view p {
+		color: var(--muted);
+		font-size: 0.86rem;
+	}
+
+	.media-details {
+		font-size: 0.75rem !important;
+	}
+
+	.viewer-arrow {
+		justify-self: center;
+	}
+
+	.mobile-controls {
+		display: none;
+	}
+
+	@media (max-width: 700px) {
+		.viewer {
+			grid-template-columns: 1fr;
+			grid-template-rows: minmax(0, 1fr) 3rem;
+			gap: 0.5rem;
+			padding: 0.75rem;
+		}
+
+		.viewer-arrow {
+			display: none;
+		}
+
+		.mobile-controls {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 2rem;
+		}
+
+		.photo-view figcaption {
+			min-height: 3.2rem;
+		}
+	}
+
+	@media (max-height: 480px) {
+		.viewer-page {
+			overflow: auto;
+		}
+	}
+</style>

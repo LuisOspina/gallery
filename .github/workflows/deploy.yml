@@ -1,0 +1,39 @@
+name: Deploy gallery
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+      PUBLIC_COGNITO_CLIENT_ID: ${{ vars.PUBLIC_COGNITO_CLIENT_ID }}
+      PUBLIC_COGNITO_DOMAIN: ${{ vars.PUBLIC_COGNITO_DOMAIN }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - run: zip -j api.zip backend/api/index.mjs
+
+      - uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ca-central-1
+
+      - run: aws s3 sync dist "s3://${{ vars.AWS_SITE_BUCKET }}" --delete
+      - run: aws lambda update-function-code --function-name "${{ vars.AWS_API_FUNCTION }}" --zip-file fileb://api.zip
+      - run: aws cloudfront create-invalidation --distribution-id "${{ vars.AWS_DISTRIBUTION_ID }}" --paths "/*"

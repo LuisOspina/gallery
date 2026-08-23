@@ -1,0 +1,97 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+	<header class="site-header">
+		<a class="brand" href="/" aria-label="Luis Ospina Gallery home">
+			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span> / Gallery
+		</a>
+		<a class="site-link" href="https://luisospina.ca">luisospina.ca</a>
+	</header>
+
+	<main>
+		<h1 class="visually-hidden">Photo gallery</h1>
+		<p class="status-message" id="gallery-status">Loading photos…</p>
+		<div class="gallery-grid" id="gallery" aria-live="polite"></div>
+		<noscript><p class="status-message">JavaScript is required to load the gallery.</p></noscript>
+	</main>
+</Layout>
+
+<script>
+	import { listMedia } from "../lib/media";
+
+	const gallery = document.querySelector<HTMLDivElement>("#gallery");
+	const status = document.querySelector<HTMLParagraphElement>("#gallery-status");
+
+	function addPhoto(item: Awaited<ReturnType<typeof listMedia>>[number]) {
+		if (!gallery) return;
+
+		const link = document.createElement("a");
+		link.className = "photo-card";
+		link.href = `/media/${item.id}`;
+		link.setAttribute("aria-label", item.title || "Open photo");
+
+		const image = document.createElement("img");
+		image.src = item.thumbnailUrl;
+		image.alt = item.title;
+		image.width = item.width;
+		image.height = item.height;
+		image.loading = "lazy";
+
+		link.append(image);
+		gallery.append(link);
+	}
+
+	try {
+		const items = await listMedia();
+		items.forEach(addPhoto);
+
+		if (status) {
+			status.textContent = items.length ? "" : "No photos have been added yet.";
+			status.hidden = items.length > 0;
+		}
+	} catch {
+		if (status) status.textContent = "The gallery could not be loaded.";
+	}
+</script>
+
+<style is:global>
+	.gallery-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: clamp(0.4rem, 1vw, 0.8rem);
+		padding: clamp(0.4rem, 1vw, 0.8rem);
+	}
+
+	.photo-card {
+		display: block;
+		aspect-ratio: 3 / 2;
+		overflow: hidden;
+		background: #e8e4dc;
+	}
+
+	.photo-card img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 180ms ease;
+	}
+
+	.photo-card:hover img {
+		transform: scale(1.015);
+	}
+
+	@media (max-width: 760px) {
+		.gallery-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 460px) {
+		.gallery-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

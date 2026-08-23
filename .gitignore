@@ -1,0 +1,31 @@
+# build output
+dist/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# environment variables
+.env
+.env.production
+
+# deployment packages and local sample files
+*.zip
+public/sample/
+public/data/media.json
+prepare_samples.py
+.deploy/
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
