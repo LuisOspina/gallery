@@ -1,5 +1,6 @@
 ---
 import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/Icon.astro";
 ---
 
 <Layout title="Gallery Admin">
@@ -14,12 +15,12 @@ import Layout from "../../layouts/Layout.astro";
 			<h1>Add photo</h1>
 			<details class="admin-menu">
 				<summary aria-label="Open menu">
-					<span class="material-symbols-rounded menu-open" aria-hidden="true">menu</span>
-					<span class="material-symbols-rounded menu-close" aria-hidden="true">close</span>
+					<span class="menu-open"><Icon name="menu" /></span>
+					<span class="menu-close"><Icon name="close" /></span>
 				</summary>
 				<nav aria-label="Admin menu">
-					<a href="/"><span class="material-symbols-rounded" aria-hidden="true">photo_library</span>Gallery</a>
-					<button id="sign-out" type="button"><span class="material-symbols-rounded" aria-hidden="true">logout</span>Sign out</button>
+					<a href="/"><Icon name="gallery" />Gallery</a>
+					<button id="sign-out" type="button"><Icon name="logout" />Sign out</button>
 				</nav>
 			</details>
 		</header>
@@ -29,7 +30,7 @@ import Layout from "../../layouts/Layout.astro";
 				<form id="upload-form">
 					<label class="drop-zone" id="drop-zone">
 						<input class="visually-hidden" id="photo-input" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
-						<span class="material-symbols-rounded" aria-hidden="true">add_photo_alternate</span>
+						<Icon name="addPhoto" />
 						<strong>Drop a photo here</strong>
 						<span>or browse</span>
 						<small id="selected-file"></small>
@@ -62,7 +63,7 @@ import Layout from "../../layouts/Layout.astro";
 				<p class="list-status" id="list-status">Loading photos…</p>
 				<div class="table-wrap">
 					<table id="photo-table" hidden>
-						<thead><tr><th>Photo</th><th>Details</th><th>Date</th><th><span class="visually-hidden">Edit</span></th></tr></thead>
+						<thead><tr><th>Photo</th><th>Caption</th><th>City</th><th>Tags</th><th>Created</th><th>Status</th><th><span class="visually-hidden">Edit</span></th></tr></thead>
 						<tbody id="photo-list"></tbody>
 					</table>
 				</div>
@@ -74,7 +75,7 @@ import Layout from "../../layouts/Layout.astro";
 		<form id="edit-form" method="dialog">
 			<div class="dialog-heading">
 				<h2>Edit photo</h2>
-				<button class="icon-button" value="cancel" aria-label="Close edit dialog"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+				<button class="icon-button" value="cancel" aria-label="Close edit dialog"><Icon name="close" /></button>
 			</div>
 			<img class="edit-preview" id="edit-preview" alt="" />
 			<label>Caption <span>(optional)</span><textarea id="edit-caption" maxlength="240" rows="3"></textarea></label>
@@ -185,15 +186,21 @@ import Layout from "../../layouts/Layout.astro";
 			image.alt = "";
 			photoCell.append(image);
 
-			const detailsCell = document.createElement("td");
-			const caption = document.createElement("strong");
-			caption.textContent = item.caption || "No caption";
-			const meta = document.createElement("small");
-			meta.textContent = [item.city, item.tags.map((tag) => `#${tag}`).join(" "), item.hidden ? "Hidden" : ""].filter(Boolean).join(" · ");
-			detailsCell.append(caption, meta);
+			const captionCell = document.createElement("td");
+			captionCell.className = "caption-cell";
+			captionCell.textContent = item.caption || "—";
+
+			const cityCell = document.createElement("td");
+			cityCell.textContent = item.city || "—";
+
+			const tagsCell = document.createElement("td");
+			tagsCell.textContent = item.tags.length ? item.tags.map((tag) => `#${tag}`).join(" ") : "—";
 
 			const dateCell = document.createElement("td");
 			dateCell.textContent = formatDate(item.createdAt);
+
+			const statusCell = document.createElement("td");
+			statusCell.textContent = item.hidden ? "Hidden" : "Visible";
 
 			const actionCell = document.createElement("td");
 			const editButton = document.createElement("button");
@@ -201,13 +208,13 @@ import Layout from "../../layouts/Layout.astro";
 			editButton.type = "button";
 			editButton.setAttribute("aria-label", `Edit ${item.caption || "photo"}`);
 			const icon = document.createElement("span");
-			icon.className = "material-symbols-rounded";
-			icon.textContent = "edit";
+			icon.className = "edit-symbol";
+			icon.textContent = "✎";
 			icon.setAttribute("aria-hidden", "true");
 			editButton.append(icon);
 			editButton.addEventListener("click", () => openEditor(item));
 			actionCell.append(editButton);
-			row.append(photoCell, detailsCell, dateCell, actionCell);
+			row.append(photoCell, captionCell, cityCell, tagsCell, dateCell, statusCell, actionCell);
 			list.append(row);
 		});
 		table.hidden = !items.length;
@@ -363,7 +370,9 @@ import Layout from "../../layouts/Layout.astro";
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1.25rem clamp(1rem, 5vw, 4rem);
+		width: min(100% - 2rem, 68rem);
+		margin: 0 auto;
+		padding: 1.25rem 0;
 	}
 
 	.admin-header h1 {
@@ -376,6 +385,8 @@ import Layout from "../../layouts/Layout.astro";
 	}
 
 	.admin-menu summary {
+		position: relative;
+		z-index: 4;
 		display: grid;
 		width: 2.75rem;
 		height: 2.75rem;
@@ -393,15 +404,37 @@ import Layout from "../../layouts/Layout.astro";
 	}
 
 	.admin-menu nav {
-		position: absolute;
-		top: 3.25rem;
+		position: fixed;
+		top: 0;
 		right: 0;
-		z-index: 2;
+		z-index: 3;
 		display: grid;
-		width: 11rem;
-		padding: 0.5rem;
+		align-content: start;
+		width: min(20rem, 25vw);
+		height: 100dvh;
+		padding: 6rem 1.25rem 1.25rem;
 		background: #fff;
-		border: 1px solid var(--line);
+		border-left: 1px solid var(--line);
+		box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 8%);
+		animation: drawer-in 180ms ease-out;
+	}
+
+	.admin-menu[open]::before {
+		position: fixed;
+		inset: 0;
+		z-index: 2;
+		content: "";
+		background: rgb(0 0 0 / 32%);
+	}
+
+	:global(body:has(.admin-menu[open])) {
+		overflow: hidden;
+	}
+
+	@keyframes drawer-in {
+		from {
+			transform: translateX(100%);
+		}
 	}
 
 	.admin-menu a,
@@ -487,7 +520,12 @@ import Layout from "../../layouts/Layout.astro";
 		border-color: var(--green);
 	}
 
-	.drop-zone .material-symbols-rounded {
+	.drop-zone :global(.icon) {
+		width: 2.25rem;
+		height: 2.25rem;
+	}
+
+	.drop-zone .icon {
 		font-size: 2.25rem;
 	}
 
@@ -546,11 +584,13 @@ import Layout from "../../layouts/Layout.astro";
 	table {
 		width: 100%;
 		border-collapse: collapse;
+		border: 1px solid var(--line);
+		font-size: 0.84rem;
 	}
 
 	th,
 	td {
-		padding: 0.75rem;
+		padding: 0.5rem 0.65rem;
 		border-bottom: 1px solid var(--line);
 		text-align: left;
 		vertical-align: middle;
@@ -558,26 +598,38 @@ import Layout from "../../layouts/Layout.astro";
 
 	th {
 		color: var(--muted);
-		font-size: 0.78rem;
-		font-weight: 400;
+		background: #f5f5f5;
+		font-size: 0.75rem;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	tbody tr:hover {
+		background: #f8f8f8;
 	}
 
 	.table-photo {
 		display: block;
-		width: 4rem;
-		height: 4rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		object-fit: cover;
+		background: #f1f1f1;
 	}
 
-	td strong,
-	td small {
-		display: block;
-		max-width: 28rem;
+	td {
+		max-width: 13rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	td small {
-		margin-top: 0.3rem;
-		color: var(--muted);
+	.caption-cell {
+		min-width: 11rem;
+	}
+
+	.edit-symbol {
+		font-size: 1.25rem;
+		line-height: 1;
 	}
 
 	.hidden-photo {
@@ -619,9 +671,10 @@ import Layout from "../../layouts/Layout.astro";
 
 	.edit-preview {
 		display: block;
-		width: 100%;
-		height: 10rem;
+		width: 5rem;
+		height: 5rem;
 		object-fit: contain;
+		background: #f3f3f3;
 	}
 
 	.checkbox-label {
@@ -644,13 +697,12 @@ import Layout from "../../layouts/Layout.astro";
 	}
 
 	@media (max-width: 600px) {
-		.field-row {
-			display: grid;
+		.admin-menu nav {
+			width: min(22rem, 84vw);
 		}
 
-		th:nth-child(3),
-		td:nth-child(3) {
-			display: none;
+		.field-row {
+			display: grid;
 		}
 
 		.admin-main {

@@ -1,5 +1,5 @@
 :root {
-	--background: #f6f4ef;
+	--background: #fff;
 	--foreground: #26231f;
 	--muted: #716b63;
 	--brown: #873c25;
@@ -23,6 +23,7 @@ body {
 	min-width: 320px;
 	min-height: 100vh;
 	margin: 0;
+	background: var(--background);
 }
 
 a {
@@ -45,18 +46,11 @@ textarea {
 	outline-offset: 3px;
 }
 
-.material-symbols-rounded {
-	font-size: 1.6rem;
-	font-weight: normal;
-	line-height: 1;
-	font-style: normal;
-	letter-spacing: normal;
-	text-transform: none;
-	white-space: nowrap;
-	word-wrap: normal;
-	direction: ltr;
-	-webkit-font-feature-settings: "liga";
-	-webkit-font-smoothing: antialiased;
+.icon {
+	display: block;
+	width: 1.5rem;
+	height: 1.5rem;
+	fill: currentColor;
 }
 
 .site-header {
@@ -64,7 +58,9 @@ textarea {
 	align-items: center;
 	justify-content: space-between;
 	min-height: 4.5rem;
-	padding: 1rem clamp(1rem, 4vw, 3rem);
+	width: min(100%, 76rem);
+	margin: 0 auto;
+	padding: 1rem clamp(1rem, 5vw, 4rem);
 	border-bottom: 1px solid var(--line);
 }
 

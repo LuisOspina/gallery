@@ -1,17 +1,18 @@
 ---
 import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/Icon.astro";
 ---
 
 <Layout title="Photo — Gallery" pageClass="viewer-page">
 	<header class="viewer-header">
 		<a class="icon-link" href="/" aria-label="Back to gallery">
-			<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+			<Icon name="back" />
 		</a>
 	</header>
 
 	<main class="viewer" aria-live="polite">
 		<a class="icon-link viewer-arrow" id="previous-desktop" href="/" aria-label="Previous photo">
-			<span class="material-symbols-rounded" aria-hidden="true">arrow_back_ios_new</span>
+			<Icon name="previous" />
 		</a>
 
 		<figure class="photo-view">
@@ -27,15 +28,15 @@ import Layout from "../../layouts/Layout.astro";
 		</figure>
 
 		<a class="icon-link viewer-arrow" id="next-desktop" href="/" aria-label="Next photo">
-			<span class="material-symbols-rounded" aria-hidden="true">arrow_forward_ios</span>
+			<Icon name="next" />
 		</a>
 
 		<nav class="mobile-controls" aria-label="Photo navigation">
 			<a class="icon-link" id="previous-mobile" href="/" aria-label="Previous photo">
-				<span class="material-symbols-rounded" aria-hidden="true">arrow_back_ios_new</span>
+				<Icon name="previous" />
 			</a>
 			<a class="icon-link" id="next-mobile" href="/" aria-label="Next photo">
-				<span class="material-symbols-rounded" aria-hidden="true">arrow_forward_ios</span>
+				<Icon name="next" />
 			</a>
 		</nav>
 	</main>
