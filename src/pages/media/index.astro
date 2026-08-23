@@ -2,13 +2,10 @@
 import Layout from "../../layouts/Layout.astro";
 ---
 
-<Layout title="Photo — Luis Ospina" pageClass="viewer-page">
+<Layout title="Photo — Gallery" pageClass="viewer-page">
 	<header class="viewer-header">
 		<a class="icon-link" href="/" aria-label="Back to gallery">
 			<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-		</a>
-		<a class="brand" href="/">
-			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span>
 		</a>
 	</header>
 
@@ -18,12 +15,14 @@ import Layout from "../../layouts/Layout.astro";
 		</a>
 
 		<figure class="photo-view">
-			<p class="status-message" id="media-status">Loading photo…</p>
-			<img id="media-image" alt="" hidden />
+			<div class="image-window">
+				<p class="status-message" id="media-status">Loading photo…</p>
+				<img id="media-image" alt="" hidden />
+			</div>
 			<figcaption id="media-caption" hidden>
-				<h1 id="media-title"></h1>
-				<p id="media-subtitle"></p>
+				<p class="photo-caption" id="photo-caption"></p>
 				<p class="media-details" id="media-details"></p>
+				<div class="media-tags" id="media-tags"></div>
 			</figcaption>
 		</figure>
 
@@ -48,10 +47,10 @@ import Layout from "../../layouts/Layout.astro";
 	const id = decodeURIComponent(location.pathname.split("/").filter(Boolean).at(-1) || "");
 	const status = document.querySelector<HTMLParagraphElement>("#media-status");
 	const image = document.querySelector<HTMLImageElement>("#media-image");
-	const caption = document.querySelector<HTMLElement>("#media-caption");
-	const title = document.querySelector<HTMLHeadingElement>("#media-title");
-	const subtitle = document.querySelector<HTMLParagraphElement>("#media-subtitle");
+	const figureCaption = document.querySelector<HTMLElement>("#media-caption");
+	const photoCaption = document.querySelector<HTMLParagraphElement>("#photo-caption");
 	const details = document.querySelector<HTMLParagraphElement>("#media-details");
+	const tags = document.querySelector<HTMLDivElement>("#media-tags");
 	const previousLinks = ["#previous-desktop", "#previous-mobile"];
 	const nextLinks = ["#next-desktop", "#next-mobile"];
 
@@ -64,51 +63,53 @@ import Layout from "../../layouts/Layout.astro";
 
 	try {
 		const [item, items] = await Promise.all([getMedia(id), listMedia()]);
-
 		if (!item) throw new Error("Photo not found");
 
 		const index = items.findIndex((photo) => photo.id === item.id);
 		const previous = items[(index - 1 + items.length) % items.length];
 		const next = items[(index + 1) % items.length];
-		const locationText = [item.city, item.country].filter(Boolean).join(", ");
-		const uploaded = new Intl.DateTimeFormat(undefined, {
+		const created = new Intl.DateTimeFormat(undefined, {
 			dateStyle: "medium",
 			timeStyle: "short",
 			timeZone: "UTC",
-		}).format(new Date(item.uploadedAt));
+		}).format(new Date(item.createdAt));
 
 		if (image) {
 			image.src = item.displayUrl;
-			image.alt = item.title;
+			image.alt = item.caption;
 			image.width = item.width;
 			image.height = item.height;
 			image.hidden = false;
 		}
-
-		if (title) title.textContent = item.title;
-		if (subtitle) {
-			subtitle.textContent = item.subtitle;
-			subtitle.hidden = !item.subtitle;
+		if (photoCaption) {
+			photoCaption.textContent = item.caption;
+			photoCaption.hidden = !item.caption;
 		}
-		if (details) details.textContent = [locationText, `Uploaded ${uploaded} UTC`].filter(Boolean).join(" · ");
-		if (caption) caption.hidden = false;
-		if (status) status.hidden = true;
-
-		document.title = `${item.title || "Photo"} — Luis Ospina`;
-		setLinks(previousLinks, `/media/${previous.id}`);
-		setLinks(nextLinks, `/media/${next.id}`);
-
-		document.addEventListener("keydown", (event) => {
-			if (event.key === "ArrowLeft") location.href = `/media/${previous.id}`;
-			if (event.key === "ArrowRight") location.href = `/media/${next.id}`;
+		if (details) details.textContent = [item.city, `${created} UTC`].filter(Boolean).join(" · ");
+		item.tags.forEach((tag) => {
+			const span = document.createElement("span");
+			span.textContent = tag;
+			tags?.append(span);
 		});
+		if (figureCaption) figureCaption.hidden = false;
+		if (status) status.hidden = true;
+		document.title = `${item.caption || "Photo"} — Gallery`;
+
+		if (previous && next) {
+			setLinks(previousLinks, `/media/${previous.id}`);
+			setLinks(nextLinks, `/media/${next.id}`);
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "ArrowLeft") location.href = `/media/${previous.id}`;
+				if (event.key === "ArrowRight") location.href = `/media/${next.id}`;
+			});
+		}
 	} catch {
 		if (status) status.textContent = "This photo could not be found.";
 	}
 </script>
 
 <style is:global>
-	html {
+	html:has(.viewer-page) {
 		height: 100%;
 		overflow: hidden;
 	}
@@ -123,32 +124,37 @@ import Layout from "../../layouts/Layout.astro";
 	.viewer-header {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		height: 4.5rem;
-		padding: 0 1rem;
-		border-bottom: 1px solid var(--line);
+		height: 4rem;
+		padding: 0 clamp(1rem, 3vw, 2rem);
 	}
 
 	.viewer {
 		display: grid;
-		grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+		grid-template-columns: 3rem minmax(0, 58rem) 3rem;
 		align-items: center;
-		gap: 1rem;
-		height: calc(100dvh - 4.5rem);
-		padding: 1rem;
+		justify-content: center;
+		gap: clamp(1rem, 4vw, 4rem);
+		height: calc(100dvh - 4rem);
+		padding: 0.75rem clamp(1rem, 4vw, 3rem) 1.5rem;
 	}
 
 	.photo-view {
 		display: grid;
 		grid-template-rows: minmax(0, 1fr) auto;
-		gap: 0.8rem;
+		gap: 0.85rem;
 		min-width: 0;
 		height: 100%;
 		margin: 0;
 		text-align: center;
 	}
 
-	.photo-view img {
+	.image-window {
+		display: grid;
+		min-height: 0;
+		place-items: center;
+	}
+
+	.image-window img {
 		display: block;
 		width: 100%;
 		height: 100%;
@@ -157,25 +163,36 @@ import Layout from "../../layouts/Layout.astro";
 	}
 
 	.photo-view figcaption {
-		min-height: 3.6rem;
-	}
-
-	.photo-view h1,
-	.photo-view p {
-		margin: 0.15rem 0;
-	}
-
-	.photo-view h1 {
-		font-size: 1rem;
+		min-height: 3.25rem;
 	}
 
 	.photo-view p {
-		color: var(--muted);
-		font-size: 0.86rem;
+		margin: 0.2rem 0;
+	}
+
+	.photo-caption {
+		font-size: 0.95rem;
 	}
 
 	.media-details {
-		font-size: 0.75rem !important;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+
+	.media-tags {
+		display: flex;
+		justify-content: center;
+		gap: 0.45rem;
+		margin-top: 0.35rem;
+	}
+
+	.media-tags span {
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+
+	.media-tags span::before {
+		content: "#";
 	}
 
 	.viewer-arrow {
@@ -191,7 +208,7 @@ import Layout from "../../layouts/Layout.astro";
 			grid-template-columns: 1fr;
 			grid-template-rows: minmax(0, 1fr) 3rem;
 			gap: 0.5rem;
-			padding: 0.75rem;
+			padding: 0.5rem 0.75rem 0.75rem;
 		}
 
 		.viewer-arrow {
@@ -203,16 +220,6 @@ import Layout from "../../layouts/Layout.astro";
 			align-items: center;
 			justify-content: center;
 			gap: 2rem;
-		}
-
-		.photo-view figcaption {
-			min-height: 3.2rem;
-		}
-	}
-
-	@media (max-height: 480px) {
-		.viewer-page {
-			overflow: auto;
 		}
 	}
 </style>

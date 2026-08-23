@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+	DeleteCommand,
 	DynamoDBDocumentClient,
 	GetCommand,
 	PutCommand,
 	ScanCommand,
 	UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const database = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -25,15 +26,18 @@ const response = (statusCode, body) => ({
 });
 
 const clean = (value, length) => String(value || "").trim().slice(0, length);
+const cleanTags = (tags) => [...new Set(
+	(Array.isArray(tags) ? tags : [])
+		.map((tag) => clean(tag, 30))
+		.filter(Boolean),
+)].slice(0, 12);
 
 const publicItem = (item) => ({
 	id: item.id,
-	title: item.title,
-	subtitle: item.subtitle,
-	city: item.city,
-	country: item.country,
-	...(item.capturedAt ? { capturedAt: item.capturedAt } : {}),
-	uploadedAt: item.uploadedAt,
+	caption: item.caption ?? "",
+	city: item.city ?? "",
+	tags: item.tags || [],
+	createdAt: item.createdAt || item.uploadedAt,
 	thumbnailUrl: `${process.env.MEDIA_BASE_URL}/${item.thumbnailKey}`,
 	displayUrl: `${process.env.MEDIA_BASE_URL}/${item.displayKey}`,
 	width: item.width,
@@ -45,9 +49,18 @@ export async function handler(event) {
 		if (event.routeKey === "GET /media") {
 			const result = await database.send(new ScanCommand({ TableName: process.env.TABLE_NAME }));
 			const items = (result.Items || [])
-				.filter((item) => item.status === "ready")
-				.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+				.filter((item) => item.status === "ready" && !item.hidden)
+				.sort((a, b) => (b.createdAt || b.uploadedAt).localeCompare(a.createdAt || a.uploadedAt))
 				.map(publicItem);
+			return response(200, items);
+		}
+
+		if (event.routeKey === "GET /admin/media") {
+			const result = await database.send(new ScanCommand({ TableName: process.env.TABLE_NAME }));
+			const items = (result.Items || [])
+				.filter((item) => item.status === "ready")
+				.sort((a, b) => (b.createdAt || b.uploadedAt).localeCompare(a.createdAt || a.uploadedAt))
+				.map((item) => ({ ...publicItem(item), hidden: Boolean(item.hidden) }));
 			return response(200, items);
 		}
 
@@ -57,7 +70,7 @@ export async function handler(event) {
 				Key: { id: event.pathParameters.id },
 			}));
 
-			if (!result.Item || result.Item.status !== "ready") {
+			if (!result.Item || result.Item.status !== "ready" || result.Item.hidden) {
 				return response(404, { message: "Photo not found" });
 			}
 
@@ -76,15 +89,14 @@ export async function handler(event) {
 			const originalKey = `originals/${id}.${extension}`;
 			const displayKey = `images/display/${id}.webp`;
 			const thumbnailKey = `images/thumbnails/${id}.webp`;
-			const uploadedAt = new Date().toISOString();
+			const createdAt = new Date().toISOString();
 			const item = {
 				id,
-				title: clean(body.title, 100),
-				subtitle: clean(body.subtitle, 200),
+				caption: clean(body.caption, 240),
 				city: clean(body.city, 80),
-				country: clean(body.country, 80),
-				capturedAt: clean(body.capturedAt, 40),
-				uploadedAt,
+				tags: cleanTags(body.tags),
+				createdAt,
+				hidden: false,
 				originalKey,
 				displayKey,
 				thumbnailKey,
@@ -130,19 +142,50 @@ export async function handler(event) {
 			const result = await database.send(new UpdateCommand({
 				TableName: process.env.TABLE_NAME,
 				Key: { id: event.pathParameters.id },
-				UpdateExpression: "SET title = :title, subtitle = :subtitle, city = :city, country = :country, capturedAt = :capturedAt",
+				UpdateExpression: "SET caption = :caption, city = :city, tags = :tags, #hidden = :hidden",
+				ExpressionAttributeNames: { "#hidden": "hidden" },
 				ExpressionAttributeValues: {
-					":title": clean(body.title, 100),
-					":subtitle": clean(body.subtitle, 200),
+					":caption": clean(body.caption, 240),
 					":city": clean(body.city, 80),
-					":country": clean(body.country, 80),
-					":capturedAt": clean(body.capturedAt, 40),
+					":tags": cleanTags(body.tags),
+					":hidden": Boolean(body.hidden),
 				},
 				ConditionExpression: "attribute_exists(id)",
 				ReturnValues: "ALL_NEW",
 			}));
 
-			return response(200, result.Attributes.status === "ready" ? publicItem(result.Attributes) : result.Attributes);
+			return response(200, { ...publicItem(result.Attributes), hidden: Boolean(result.Attributes.hidden) });
+		}
+
+		if (event.routeKey === "DELETE /media/{id}") {
+			const id = event.pathParameters.id;
+			const result = await database.send(new GetCommand({
+				TableName: process.env.TABLE_NAME,
+				Key: { id },
+			}));
+
+			if (!result.Item) return response(404, { message: "Photo not found" });
+
+			await Promise.all([
+				storage.send(new DeleteObjectCommand({
+					Bucket: process.env.ORIGINAL_BUCKET,
+					Key: result.Item.originalKey,
+				})),
+				storage.send(new DeleteObjectCommand({
+					Bucket: process.env.MEDIA_BUCKET,
+					Key: result.Item.displayKey,
+				})),
+				storage.send(new DeleteObjectCommand({
+					Bucket: process.env.MEDIA_BUCKET,
+					Key: result.Item.thumbnailKey,
+				})),
+			]);
+			await database.send(new DeleteCommand({
+				TableName: process.env.TABLE_NAME,
+				Key: { id },
+			}));
+
+			return response(200, { id });
 		}
 
 		return response(404, { message: "Route not found" });

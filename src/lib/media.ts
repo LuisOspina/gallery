@@ -1,11 +1,10 @@
 export interface MediaItem {
 	id: string;
-	title: string;
-	subtitle: string;
+	caption: string;
 	city: string;
-	country: string;
-	capturedAt?: string;
-	uploadedAt: string;
+	tags: string[];
+	createdAt: string;
+	hidden?: boolean;
 	thumbnailUrl: string;
 	displayUrl: string;
 	width: number;

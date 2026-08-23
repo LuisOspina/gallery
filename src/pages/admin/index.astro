@@ -2,80 +2,110 @@
 import Layout from "../../layouts/Layout.astro";
 ---
 
-<Layout title="Gallery Admin — Luis Ospina">
-	<header class="site-header">
-		<a class="icon-link" href="/" aria-label="Back to gallery">
-			<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-		</a>
-		<a class="brand" href="/">
-			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span> / Admin
-		</a>
-	</header>
+<Layout title="Gallery Admin">
+	<section class="signed-out" id="signed-out">
+		<h1>Gallery admin</h1>
+		<p>Sign in to manage your photos.</p>
+		<button class="primary-button" id="sign-in" type="button">Sign in</button>
+	</section>
 
-	<main class="admin-main">
-		<section class="admin-card" id="signed-out">
-			<h1>Gallery admin</h1>
-			<p>Sign in to upload a photo and add its details.</p>
-			<button class="primary-button" id="sign-in" type="button">Sign in</button>
-		</section>
+	<div id="signed-in" hidden>
+		<header class="admin-header">
+			<h1>Add photo</h1>
+			<details class="admin-menu">
+				<summary aria-label="Open menu">
+					<span class="material-symbols-rounded menu-open" aria-hidden="true">menu</span>
+					<span class="material-symbols-rounded menu-close" aria-hidden="true">close</span>
+				</summary>
+				<nav aria-label="Admin menu">
+					<a href="/"><span class="material-symbols-rounded" aria-hidden="true">photo_library</span>Gallery</a>
+					<button id="sign-out" type="button"><span class="material-symbols-rounded" aria-hidden="true">logout</span>Sign out</button>
+				</nav>
+			</details>
+		</header>
 
-		<section class="admin-card" id="signed-in" hidden>
-			<div class="admin-heading">
-				<div>
-					<h1>Add a photo</h1>
-					<p id="account-email"></p>
+		<main class="admin-main">
+			<section class="upload-section">
+				<form id="upload-form">
+					<label class="drop-zone" id="drop-zone">
+						<input class="visually-hidden" id="photo-input" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+						<span class="material-symbols-rounded" aria-hidden="true">add_photo_alternate</span>
+						<strong>Drop a photo here</strong>
+						<span>or browse</span>
+						<small id="selected-file"></small>
+					</label>
+
+					<label>
+						Caption <span>(optional)</span>
+						<textarea name="caption" maxlength="240" rows="3"></textarea>
+					</label>
+
+					<div class="field-row">
+						<label>
+							City
+							<input name="city" list="city-options" maxlength="80" />
+						</label>
+						<label>
+							Tags <span>(comma separated)</span>
+							<input name="tags" maxlength="240" />
+						</label>
+					</div>
+					<datalist id="city-options"></datalist>
+
+					<button class="primary-button" id="publish-button" type="submit" disabled>Publish photo</button>
+					<p class="form-status" id="form-status" role="status"></p>
+				</form>
+			</section>
+
+			<section class="photo-list-section">
+				<h2>Photos</h2>
+				<p class="list-status" id="list-status">Loading photos…</p>
+				<div class="table-wrap">
+					<table id="photo-table" hidden>
+						<thead><tr><th>Photo</th><th>Details</th><th>Date</th><th><span class="visually-hidden">Edit</span></th></tr></thead>
+						<tbody id="photo-list"></tbody>
+					</table>
 				</div>
-				<button class="text-button" id="sign-out" type="button">Sign out</button>
+			</section>
+		</main>
+	</div>
+
+	<dialog id="edit-dialog">
+		<form id="edit-form" method="dialog">
+			<div class="dialog-heading">
+				<h2>Edit photo</h2>
+				<button class="icon-button" value="cancel" aria-label="Close edit dialog"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
 			</div>
+			<img class="edit-preview" id="edit-preview" alt="" />
+			<label>Caption <span>(optional)</span><textarea id="edit-caption" maxlength="240" rows="3"></textarea></label>
+			<label>City<input id="edit-city" list="city-options" maxlength="80" /></label>
+			<label>Tags <span>(comma separated)</span><input id="edit-tags" maxlength="240" /></label>
+			<label class="checkbox-label"><input id="edit-hidden" type="checkbox" /> Hide from gallery</label>
+			<p class="form-status" id="edit-status" role="status"></p>
+			<div class="dialog-actions">
+				<button class="danger-button" id="open-delete" type="button">Delete</button>
+				<span></span>
+				<button class="secondary-button" value="cancel">Cancel</button>
+				<button class="primary-button" id="save-edit" type="button">Save</button>
+			</div>
+		</form>
+	</dialog>
 
-			<form id="upload-form">
-				<label>
-					Photo
-					<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
-				</label>
-
-				<label>
-					Title
-					<input name="title" maxlength="100" />
-				</label>
-
-				<label>
-					Subtitle
-					<input name="subtitle" maxlength="200" />
-				</label>
-
-				<div class="field-row">
-					<label>
-						City
-						<input name="city" maxlength="80" />
-					</label>
-					<label>
-						Country
-						<input name="country" maxlength="80" />
-					</label>
-				</div>
-
-				<label>
-					Date photographed
-					<input name="capturedAt" type="datetime-local" />
-				</label>
-
-				<button class="primary-button" type="submit">Upload photo</button>
-				<p class="form-status" id="form-status" role="status"></p>
-			</form>
-		</section>
-	</main>
+	<dialog id="delete-dialog">
+		<div class="confirm-dialog">
+			<h2>Delete photo?</h2>
+			<p>This permanently removes the photo and cannot be undone.</p>
+			<div class="dialog-actions">
+				<button class="secondary-button" id="cancel-delete" type="button">Cancel</button>
+				<button class="danger-button" id="confirm-delete" type="button">Delete photo</button>
+			</div>
+		</div>
+	</dialog>
 </Layout>
 
 <script>
-	import {
-		authIsConfigured,
-		finishSignIn,
-		getAccessToken,
-		getSignedInEmail,
-		signIn,
-		signOut,
-	} from "../../lib/auth";
+	import { authIsConfigured, finishSignIn, getAccessToken, signIn, signOut } from "../../lib/auth";
+	import type { MediaItem } from "../../lib/media";
 
 	const apiUrl = import.meta.env.PUBLIC_API_URL?.replace(/\/$/, "");
 	const signedOut = document.querySelector<HTMLElement>("#signed-out");
@@ -83,13 +113,115 @@ import Layout from "../../layouts/Layout.astro";
 	const signInButton = document.querySelector<HTMLButtonElement>("#sign-in");
 	const signOutButton = document.querySelector<HTMLButtonElement>("#sign-out");
 	const form = document.querySelector<HTMLFormElement>("#upload-form");
-	const status = document.querySelector<HTMLParagraphElement>("#form-status");
-	const email = document.querySelector<HTMLParagraphElement>("#account-email");
+	const photoInput = document.querySelector<HTMLInputElement>("#photo-input");
+	const publishButton = document.querySelector<HTMLButtonElement>("#publish-button");
+	const selectedFile = document.querySelector<HTMLElement>("#selected-file");
+	const dropZone = document.querySelector<HTMLElement>("#drop-zone");
+	const formStatus = document.querySelector<HTMLParagraphElement>("#form-status");
+	const listStatus = document.querySelector<HTMLParagraphElement>("#list-status");
+	const table = document.querySelector<HTMLTableElement>("#photo-table");
+	const list = document.querySelector<HTMLTableSectionElement>("#photo-list");
+	const cityOptions = document.querySelector<HTMLDataListElement>("#city-options");
+	const editDialog = document.querySelector<HTMLDialogElement>("#edit-dialog");
+	const deleteDialog = document.querySelector<HTMLDialogElement>("#delete-dialog");
+	const editPreview = document.querySelector<HTMLImageElement>("#edit-preview");
+	const editCaption = document.querySelector<HTMLTextAreaElement>("#edit-caption");
+	const editCity = document.querySelector<HTMLInputElement>("#edit-city");
+	const editTags = document.querySelector<HTMLInputElement>("#edit-tags");
+	const editHidden = document.querySelector<HTMLInputElement>("#edit-hidden");
+	const editStatus = document.querySelector<HTMLParagraphElement>("#edit-status");
+	let currentItem: MediaItem | undefined;
+	let items: MediaItem[] = [];
 
-	function showSignedIn() {
-		if (signedOut) signedOut.hidden = true;
-		if (signedIn) signedIn.hidden = false;
-		if (email) email.textContent = getSignedInEmail() || "Signed in";
+	function parseTags(value: FormDataEntryValue | string | null) {
+		return [...new Set(String(value || "").split(",").map((tag) => tag.trim()).filter(Boolean))];
+	}
+
+	async function authorizedRequest(path: string, options: RequestInit = {}) {
+		const token = getAccessToken();
+		if (!token) throw new Error("Please sign in again.");
+		return fetch(`${apiUrl}${path}`, {
+			...options,
+			headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...options.headers },
+		});
+	}
+
+	function formatDate(value: string) {
+		return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(value))} UTC`;
+	}
+
+	function updateCities() {
+		if (!cityOptions) return;
+		cityOptions.replaceChildren();
+		[...new Set(items.map((item) => item.city).filter(Boolean))].sort().forEach((city) => {
+			const option = document.createElement("option");
+			option.value = city;
+			cityOptions.append(option);
+		});
+	}
+
+	function openEditor(item: MediaItem) {
+		currentItem = item;
+		if (editPreview) editPreview.src = item.thumbnailUrl;
+		if (editCaption) editCaption.value = item.caption;
+		if (editCity) editCity.value = item.city;
+		if (editTags) editTags.value = item.tags.join(", ");
+		if (editHidden) editHidden.checked = Boolean(item.hidden);
+		if (editStatus) editStatus.textContent = "";
+		editDialog?.showModal();
+	}
+
+	function renderList() {
+		if (!list || !table || !listStatus) return;
+		list.replaceChildren();
+		items.forEach((item) => {
+			const row = document.createElement("tr");
+			if (item.hidden) row.className = "hidden-photo";
+
+			const photoCell = document.createElement("td");
+			const image = document.createElement("img");
+			image.className = "table-photo";
+			image.src = item.thumbnailUrl;
+			image.alt = "";
+			photoCell.append(image);
+
+			const detailsCell = document.createElement("td");
+			const caption = document.createElement("strong");
+			caption.textContent = item.caption || "No caption";
+			const meta = document.createElement("small");
+			meta.textContent = [item.city, item.tags.map((tag) => `#${tag}`).join(" "), item.hidden ? "Hidden" : ""].filter(Boolean).join(" · ");
+			detailsCell.append(caption, meta);
+
+			const dateCell = document.createElement("td");
+			dateCell.textContent = formatDate(item.createdAt);
+
+			const actionCell = document.createElement("td");
+			const editButton = document.createElement("button");
+			editButton.className = "icon-button";
+			editButton.type = "button";
+			editButton.setAttribute("aria-label", `Edit ${item.caption || "photo"}`);
+			const icon = document.createElement("span");
+			icon.className = "material-symbols-rounded";
+			icon.textContent = "edit";
+			icon.setAttribute("aria-hidden", "true");
+			editButton.append(icon);
+			editButton.addEventListener("click", () => openEditor(item));
+			actionCell.append(editButton);
+			row.append(photoCell, detailsCell, dateCell, actionCell);
+			list.append(row);
+		});
+		table.hidden = !items.length;
+		listStatus.hidden = items.length > 0;
+		listStatus.textContent = items.length ? "" : "No photos yet.";
+		updateCities();
+	}
+
+	async function loadPhotos() {
+		if (listStatus) listStatus.textContent = "Loading photos…";
+		const response = await authorizedRequest("/admin/media");
+		if (!response.ok) throw new Error("Photos could not be loaded.");
+		items = await response.json();
+		renderList();
 	}
 
 	async function resizePhoto(file: File, maximum: number, quality: number) {
@@ -102,19 +234,23 @@ import Layout from "../../layouts/Layout.astro";
 		canvas.height = height;
 		canvas.getContext("2d")?.drawImage(source, 0, 0, width, height);
 		source.close();
-
 		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
 		if (!blob) throw new Error("The photo could not be prepared.");
 		return { blob, width, height };
 	}
 
 	async function uploadFile(url: string, file: Blob, contentType: string) {
-		const response = await fetch(url, {
-			method: "PUT",
-			headers: { "content-type": contentType },
-			body: file,
-		});
+		const response = await fetch(url, { method: "PUT", headers: { "content-type": contentType }, body: file });
 		if (!response.ok) throw new Error("The photo could not be uploaded.");
+	}
+
+	function selectFile(file?: File) {
+		if (!file || !photoInput || !publishButton) return;
+		const transfer = new DataTransfer();
+		transfer.items.add(file);
+		photoInput.files = transfer.files;
+		publishButton.disabled = false;
+		if (selectedFile) selectedFile.textContent = file.name;
 	}
 
 	if (!authIsConfigured || !apiUrl) {
@@ -124,7 +260,11 @@ import Layout from "../../layouts/Layout.astro";
 	} else {
 		try {
 			await finishSignIn();
-			if (getAccessToken()) showSignedIn();
+			if (getAccessToken()) {
+				if (signedOut) signedOut.hidden = true;
+				if (signedIn) signedIn.hidden = false;
+				await loadPhotos();
+			}
 		} catch (error) {
 			const message = signedOut?.querySelector("p");
 			if (message) message.textContent = error instanceof Error ? error.message : "Sign-in failed.";
@@ -133,91 +273,165 @@ import Layout from "../../layouts/Layout.astro";
 
 	signInButton?.addEventListener("click", signIn);
 	signOutButton?.addEventListener("click", signOut);
+	photoInput?.addEventListener("change", () => selectFile(photoInput.files?.[0]));
+	["dragenter", "dragover"].forEach((name) => dropZone?.addEventListener(name, (event) => { event.preventDefault(); dropZone.classList.add("is-dragging"); }));
+	["dragleave", "drop"].forEach((name) => dropZone?.addEventListener(name, (event) => { event.preventDefault(); dropZone.classList.remove("is-dragging"); }));
+	dropZone?.addEventListener("drop", (event) => selectFile(event.dataTransfer?.files[0]));
 
 	form?.addEventListener("submit", async (event) => {
 		event.preventDefault();
-		const token = getAccessToken();
 		const data = new FormData(form);
 		const photo = data.get("photo");
-
-		if (!token || !(photo instanceof File) || !photo.size) return;
-		if (status) status.textContent = "Preparing upload…";
-
+		if (!(photo instanceof File) || !photo.size) return;
+		if (publishButton) publishButton.disabled = true;
+		if (formStatus) formStatus.textContent = "Preparing photo…";
 		try {
-			const metadata = Object.fromEntries(["title", "subtitle", "city", "country", "capturedAt"].map((key) => [key, data.get(key)]));
-			const createResponse = await fetch(`${apiUrl}/uploads`, {
+			const createResponse = await authorizedRequest("/uploads", {
 				method: "POST",
-				headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-				body: JSON.stringify({ ...metadata, contentType: photo.type }),
+				body: JSON.stringify({ caption: data.get("caption"), city: data.get("city"), tags: parseTags(data.get("tags")), contentType: photo.type }),
 			});
-
 			if (!createResponse.ok) throw new Error("The upload could not be started.");
 			const urls = await createResponse.json();
-
-			if (status) status.textContent = "Preparing photo sizes…";
-			const [display, thumbnail] = await Promise.all([
-				resizePhoto(photo, 1800, 0.84),
-				resizePhoto(photo, 640, 0.78),
-			]);
-
-			if (status) status.textContent = "Uploading photo…";
+			const [display, thumbnail] = await Promise.all([resizePhoto(photo, 1800, 0.84), resizePhoto(photo, 640, 0.78)]);
+			if (formStatus) formStatus.textContent = "Publishing photo…";
 			await Promise.all([
 				uploadFile(urls.originalUrl, photo, photo.type),
 				uploadFile(urls.displayUrl, display.blob, "image/webp"),
 				uploadFile(urls.thumbnailUrl, thumbnail.blob, "image/webp"),
 			]);
-
-			const completeResponse = await fetch(`${apiUrl}/uploads/${urls.id}/complete`, {
-				method: "POST",
-				headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-				body: JSON.stringify({ width: display.width, height: display.height }),
-			});
+			const completeResponse = await authorizedRequest(`/uploads/${urls.id}/complete`, { method: "POST", body: JSON.stringify({ width: display.width, height: display.height }) });
 			if (!completeResponse.ok) throw new Error("The upload could not be completed.");
-
 			form.reset();
-			if (status) status.textContent = "Uploaded. The photo is now in the gallery.";
+			if (selectedFile) selectedFile.textContent = "";
+			if (formStatus) formStatus.textContent = "Published.";
+			await loadPhotos();
 		} catch (error) {
-			if (status) status.textContent = error instanceof Error ? error.message : "The upload failed.";
+			if (formStatus) formStatus.textContent = error instanceof Error ? error.message : "The upload failed.";
+		} finally {
+			if (publishButton) publishButton.disabled = !photoInput?.files?.length;
 		}
+	});
+
+	document.querySelector("#save-edit")?.addEventListener("click", async () => {
+		if (!currentItem) return;
+		if (editStatus) editStatus.textContent = "Saving…";
+		try {
+			const response = await authorizedRequest(`/media/${currentItem.id}`, {
+				method: "PUT",
+				body: JSON.stringify({ caption: editCaption?.value, city: editCity?.value, tags: parseTags(editTags?.value || ""), hidden: editHidden?.checked }),
+			});
+			if (!response.ok) throw new Error("The changes could not be saved.");
+			await loadPhotos();
+			editDialog?.close();
+		} catch (error) {
+			if (editStatus) editStatus.textContent = error instanceof Error ? error.message : "Save failed.";
+		}
+	});
+
+	document.querySelector("#open-delete")?.addEventListener("click", () => deleteDialog?.showModal());
+	document.querySelector("#cancel-delete")?.addEventListener("click", () => deleteDialog?.close());
+	document.querySelector("#confirm-delete")?.addEventListener("click", async () => {
+		if (!currentItem) return;
+		const response = await authorizedRequest(`/media/${currentItem.id}`, { method: "DELETE" });
+		if (!response.ok) {
+			if (editStatus) editStatus.textContent = "The photo could not be deleted.";
+			deleteDialog?.close();
+			return;
+		}
+		deleteDialog?.close();
+		editDialog?.close();
+		await loadPhotos();
 	});
 </script>
 
 <style>
-	.admin-main {
-		width: min(100% - 2rem, 42rem);
-		margin: 3rem auto;
+	.signed-out {
+		width: min(100% - 2rem, 28rem);
+		margin: 15vh auto;
+		padding: 2rem;
+		background: #fff;
+		border: 1px solid var(--line);
+		text-align: center;
 	}
 
-	.admin-card {
-		padding: clamp(1.25rem, 4vw, 2rem);
+	.signed-out h1,
+	.signed-out p {
+		margin-top: 0;
+	}
+
+	.admin-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1.25rem clamp(1rem, 5vw, 4rem);
+	}
+
+	.admin-header h1 {
+		margin: 0;
+		font-size: 1.35rem;
+	}
+
+	.admin-menu {
+		position: relative;
+	}
+
+	.admin-menu summary {
+		display: grid;
+		width: 2.75rem;
+		height: 2.75rem;
+		place-items: center;
+		border: 1px solid var(--line);
+		border-radius: 50%;
+		cursor: pointer;
+		list-style: none;
+	}
+
+	.admin-menu summary::-webkit-details-marker,
+	.admin-menu:not([open]) .menu-close,
+	.admin-menu[open] .menu-open {
+		display: none;
+	}
+
+	.admin-menu nav {
+		position: absolute;
+		top: 3.25rem;
+		right: 0;
+		z-index: 2;
+		display: grid;
+		width: 11rem;
+		padding: 0.5rem;
 		background: #fff;
 		border: 1px solid var(--line);
 	}
 
-	.admin-card h1 {
-		margin: 0 0 0.5rem;
-		font-size: 1.5rem;
-	}
-
-	.admin-card p {
-		color: var(--muted);
-	}
-
-	.admin-heading,
-	.field-row {
+	.admin-menu a,
+	.admin-menu nav button {
 		display: flex;
-		gap: 1rem;
+		align-items: center;
+		gap: 0.65rem;
+		padding: 0.7rem;
+		color: inherit;
+		background: none;
+		border: 0;
+		cursor: pointer;
+		font: inherit;
+		text-align: left;
+		text-decoration: none;
 	}
 
-	.admin-heading {
-		align-items: start;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
+	.admin-menu a:hover,
+	.admin-menu nav button:hover {
+		background: var(--background);
 	}
 
-	.admin-heading p {
-		margin: 0;
-		font-size: 0.85rem;
+	.admin-main {
+		width: min(100% - 2rem, 68rem);
+		margin: 1rem auto 5rem;
+	}
+
+	.upload-section {
+		max-width: 48rem;
+		margin-bottom: 4rem;
 	}
 
 	form,
@@ -236,28 +450,65 @@ import Layout from "../../layouts/Layout.astro";
 		font-weight: 600;
 	}
 
-	input {
-		width: 100%;
-		min-height: 2.75rem;
-		padding: 0.65rem 0.75rem;
-		color: var(--foreground);
-		background: var(--background);
-		border: 1px solid var(--line);
-		border-radius: 0;
+	label span {
+		color: var(--muted);
+		font-size: 0.8rem;
+		font-weight: 400;
 	}
 
-	input[type="file"] {
-		padding: 0.55rem;
+	input,
+	textarea {
+		width: 100%;
+		padding: 0.65rem 0.75rem;
+		color: var(--foreground);
+		background: #fff;
+		border: 1px solid var(--line);
+		resize: vertical;
+	}
+
+	.field-row {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.drop-zone {
+		min-height: 12rem;
+		place-items: center;
+		align-content: center;
+		gap: 0.35rem;
+		padding: 1.5rem;
+		border: 1px dashed var(--muted);
+		cursor: pointer;
+		text-align: center;
+	}
+
+	.drop-zone.is-dragging {
+		background: #e8eee9;
+		border-color: var(--green);
+	}
+
+	.drop-zone .material-symbols-rounded {
+		font-size: 2.25rem;
+	}
+
+	.drop-zone small {
+		margin-top: 0.5rem;
+		color: var(--green);
+	}
+
+	.primary-button,
+	.secondary-button,
+	.danger-button {
+		min-height: 2.75rem;
+		padding: 0.65rem 1rem;
+		cursor: pointer;
 	}
 
 	.primary-button {
 		width: fit-content;
-		min-height: 2.75rem;
-		padding: 0.65rem 1rem;
 		color: #fff;
 		background: var(--green);
 		border: 1px solid var(--green);
-		cursor: pointer;
 	}
 
 	.primary-button:disabled {
@@ -265,29 +516,149 @@ import Layout from "../../layouts/Layout.astro";
 		opacity: 0.5;
 	}
 
-	.text-button {
-		padding: 0;
-		color: var(--muted);
-		background: none;
-		border: 0;
-		cursor: pointer;
-		text-decoration: underline;
-		text-underline-offset: 0.2rem;
+	.secondary-button {
+		background: transparent;
+		border: 1px solid var(--line);
 	}
 
-	.form-status {
+	.danger-button {
+		color: #fff;
+		background: #9f2f2f;
+		border: 1px solid #9f2f2f;
+	}
+
+	.form-status,
+	.list-status {
 		min-height: 1.2rem;
 		margin: 0;
+		color: var(--muted);
 		font-size: 0.9rem;
 	}
 
-	@media (max-width: 560px) {
-		.admin-main {
-			margin: 1rem auto;
-		}
+	.photo-list-section h2 {
+		font-size: 1.2rem;
+	}
 
+	.table-wrap {
+		overflow-x: auto;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	th,
+	td {
+		padding: 0.75rem;
+		border-bottom: 1px solid var(--line);
+		text-align: left;
+		vertical-align: middle;
+	}
+
+	th {
+		color: var(--muted);
+		font-size: 0.78rem;
+		font-weight: 400;
+	}
+
+	.table-photo {
+		display: block;
+		width: 4rem;
+		height: 4rem;
+		object-fit: cover;
+	}
+
+	td strong,
+	td small {
+		display: block;
+		max-width: 28rem;
+	}
+
+	td small {
+		margin-top: 0.3rem;
+		color: var(--muted);
+	}
+
+	.hidden-photo {
+		opacity: 0.55;
+	}
+
+	dialog {
+		width: min(100% - 2rem, 34rem);
+		padding: 0;
+		background: var(--background);
+		border: 1px solid var(--line);
+	}
+
+	dialog::backdrop {
+		background: rgb(0 0 0 / 45%);
+	}
+
+	dialog form,
+	.confirm-dialog {
+		padding: 1.5rem;
+	}
+
+	.dialog-heading,
+	.dialog-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.dialog-heading {
+		justify-content: space-between;
+	}
+
+	.dialog-heading h2,
+	.confirm-dialog h2 {
+		margin: 0;
+		font-size: 1.2rem;
+	}
+
+	.edit-preview {
+		display: block;
+		width: 100%;
+		height: 10rem;
+		object-fit: contain;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.checkbox-label input {
+		width: auto;
+	}
+
+	.dialog-actions span {
+		flex: 1;
+	}
+
+	.confirm-dialog .dialog-actions {
+		justify-content: flex-end;
+		margin-top: 1.5rem;
+	}
+
+	@media (max-width: 600px) {
 		.field-row {
 			display: grid;
+		}
+
+		th:nth-child(3),
+		td:nth-child(3) {
+			display: none;
+		}
+
+		.admin-main {
+			margin-top: 0;
+		}
+
+		.dialog-actions {
+			flex-wrap: wrap;
 		}
 	}
 </style>

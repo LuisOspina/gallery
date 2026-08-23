@@ -3,15 +3,22 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout>
-	<header class="site-header">
-		<a class="brand" href="/" aria-label="Luis Ospina Gallery home">
-			<span class="brand-luis">Luis</span> <span class="brand-ospina">Ospina</span> / Gallery
-		</a>
+	<header class="site-header gallery-header">
+		<a class="gallery-title" href="/">Gallery</a>
 		<a class="site-link" href="https://luisospina.ca">luisospina.ca</a>
 	</header>
 
-	<main>
+	<main class="gallery-main">
 		<h1 class="visually-hidden">Photo gallery</h1>
+		<div class="filters" id="filters" hidden>
+			<div class="tag-filters" id="tag-filters" aria-label="Filter by tag"></div>
+			<label class="city-filter">
+				<span class="visually-hidden">Filter by city</span>
+				<select id="city-filter">
+					<option value="">All cities</option>
+				</select>
+			</label>
+		</div>
 		<p class="status-message" id="gallery-status">Loading photos…</p>
 		<div class="gallery-grid" id="gallery" aria-live="polite"></div>
 		<noscript><p class="status-message">JavaScript is required to load the gallery.</p></noscript>
@@ -19,34 +26,85 @@ import Layout from "../layouts/Layout.astro";
 </Layout>
 
 <script>
-	import { listMedia } from "../lib/media";
+	import { listMedia, type MediaItem } from "../lib/media";
 
 	const gallery = document.querySelector<HTMLDivElement>("#gallery");
 	const status = document.querySelector<HTMLParagraphElement>("#gallery-status");
+	const filters = document.querySelector<HTMLDivElement>("#filters");
+	const tagFilters = document.querySelector<HTMLDivElement>("#tag-filters");
+	const cityFilter = document.querySelector<HTMLSelectElement>("#city-filter");
+	const selectedTags = new Set<string>();
+	let items: MediaItem[] = [];
 
-	function addPhoto(item: Awaited<ReturnType<typeof listMedia>>[number]) {
+	function showPhotos() {
+		const city = cityFilter?.value || "";
+		let visible = 0;
+
+		document.querySelectorAll<HTMLElement>(".photo-card").forEach((card) => {
+			const item = items.find((photo) => photo.id === card.dataset.id);
+			const matches = Boolean(item)
+				&& (!city || item?.city === city)
+				&& [...selectedTags].every((tag) => item?.tags.includes(tag));
+			card.hidden = !matches;
+			if (matches) visible += 1;
+		});
+
+		if (status) {
+			status.textContent = visible ? "" : "No photos match these filters.";
+			status.hidden = visible > 0;
+		}
+	}
+
+	function addPhoto(item: MediaItem) {
 		if (!gallery) return;
-
 		const link = document.createElement("a");
 		link.className = "photo-card";
 		link.href = `/media/${item.id}`;
-		link.setAttribute("aria-label", item.title || "Open photo");
+		link.dataset.id = item.id;
+		link.setAttribute("aria-label", item.caption || "Open photo");
 
 		const image = document.createElement("img");
 		image.src = item.thumbnailUrl;
-		image.alt = item.title;
+		image.alt = item.caption;
 		image.width = item.width;
 		image.height = item.height;
 		image.loading = "lazy";
-
 		link.append(image);
 		gallery.append(link);
 	}
 
-	try {
-		const items = await listMedia();
-		items.forEach(addPhoto);
+	function addFilters() {
+		const tags = [...new Set(items.flatMap((item) => item.tags))].sort();
+		const cities = [...new Set(items.map((item) => item.city).filter(Boolean))].sort();
 
+		tags.forEach((tag) => {
+			const button = document.createElement("button");
+			button.className = "filter-chip";
+			button.type = "button";
+			button.textContent = tag;
+			button.setAttribute("aria-pressed", "false");
+			button.addEventListener("click", () => {
+				selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag);
+				button.setAttribute("aria-pressed", String(selectedTags.has(tag)));
+				showPhotos();
+			});
+			tagFilters?.append(button);
+		});
+
+		cities.forEach((city) => {
+			const option = document.createElement("option");
+			option.value = city;
+			option.textContent = city;
+			cityFilter?.append(option);
+		});
+		cityFilter?.addEventListener("change", showPhotos);
+		if (filters) filters.hidden = !tags.length && !cities.length;
+	}
+
+	try {
+		items = await listMedia();
+		items.forEach(addPhoto);
+		addFilters();
 		if (status) {
 			status.textContent = items.length ? "" : "No photos have been added yet.";
 			status.hidden = items.length > 0;
@@ -57,41 +115,98 @@ import Layout from "../layouts/Layout.astro";
 </script>
 
 <style is:global>
+	.gallery-header {
+		border-bottom: 0;
+	}
+
+	.gallery-title {
+		font-size: 1.15rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	.gallery-main {
+		width: min(100%, 76rem);
+		margin: 0 auto;
+		padding: 1rem clamp(1rem, 5vw, 4rem) 5rem;
+	}
+
+	.filters {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin: 0 0 2.5rem;
+	}
+
+	.tag-filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.55rem;
+	}
+
+	.filter-chip,
+	.city-filter select {
+		min-height: 2.25rem;
+		padding: 0.4rem 0.75rem;
+		color: var(--foreground);
+		background: transparent;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		cursor: pointer;
+	}
+
+	.filter-chip[aria-pressed="true"] {
+		color: #fff;
+		background: var(--green);
+		border-color: var(--green);
+	}
+
 	.gallery-grid {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: clamp(0.4rem, 1vw, 0.8rem);
-		padding: clamp(0.4rem, 1vw, 0.8rem);
+		columns: 3;
+		column-gap: clamp(1rem, 2vw, 1.75rem);
 	}
 
 	.photo-card {
 		display: block;
-		aspect-ratio: 3 / 2;
-		overflow: hidden;
+		break-inside: avoid;
+		margin: 0 0 clamp(1.25rem, 2.5vw, 2rem);
 		background: #e8e4dc;
+	}
+
+	.photo-card:nth-child(4n + 2) {
+		margin-bottom: clamp(2rem, 4vw, 3.5rem);
 	}
 
 	.photo-card img {
 		display: block;
 		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		transition: transform 180ms ease;
+		height: auto;
+		transition: opacity 160ms ease;
 	}
 
 	.photo-card:hover img {
-		transform: scale(1.015);
+		opacity: 0.88;
+	}
+
+	.photo-card[hidden] {
+		display: none;
 	}
 
 	@media (max-width: 760px) {
-		.gallery-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+		.gallery-main {
+			padding-inline: 1rem;
 		}
-	}
 
-	@media (max-width: 460px) {
+		.filters {
+			align-items: start;
+			flex-direction: column;
+			margin-bottom: 1.5rem;
+		}
+
 		.gallery-grid {
-			grid-template-columns: 1fr;
+			columns: 2;
+			column-gap: 1rem;
 		}
 	}
 </style>

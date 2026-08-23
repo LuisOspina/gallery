@@ -75,18 +75,6 @@ export function getAccessToken() {
 	return sessionStorage.getItem("access_token") || undefined;
 }
 
-export function getSignedInEmail() {
-	const token = sessionStorage.getItem("id_token");
-	if (!token) return;
-
-	try {
-		const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-		return JSON.parse(atob(payload)).email as string;
-	} catch {
-		return;
-	}
-}
-
 export function signOut() {
 	sessionStorage.clear();
 	const query = new URLSearchParams({ client_id: clientId, logout_uri: `${location.origin}/admin` });
