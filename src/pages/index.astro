@@ -12,7 +12,7 @@ import Layout from "../layouts/Layout.astro";
 		<h1 class="visually-hidden">Photo gallery</h1>
 		<div class="filters" id="filters" hidden>
 			<label class="city-filter">
-				<span>City</span>
+				<span class="visually-hidden">Filter by city</span>
 				<select id="city-filter">
 					<option value="">All cities</option>
 				</select>
@@ -142,7 +142,6 @@ import Layout from "../layouts/Layout.astro";
 	.city-filter {
 		display: flex;
 		align-items: center;
-		gap: 0.55rem;
 		color: var(--muted);
 		font-size: 0.85rem;
 	}
