@@ -350,7 +350,7 @@ import Icon from "../../components/Icon.astro";
 	});
 </script>
 
-<style>
+<style is:global>
 	.signed-out {
 		width: min(100% - 2rem, 28rem);
 		margin: 15vh auto;
@@ -428,7 +428,7 @@ import Icon from "../../components/Icon.astro";
 		background: rgb(0 0 0 / 32%);
 	}
 
-	:global(body:has(.admin-menu[open])) {
+	body:has(.admin-menu[open]) {
 		overflow: hidden;
 	}
 
